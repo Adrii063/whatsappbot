@@ -26,18 +26,18 @@ def webhook():
 
     print(f"📩 Mensaje de {sender}: {message_text}")
 
-    # 🔹 1. Enviar mensaje a BotPress
+    # 🔹 1. Enviar mensaje a BotPress con un formato más estándar
     botpress_payload = {
         "type": "text",
         "text": message_text,
-        "from": sender
+        "user": {"id": sender},  # 🆕 Se añade un identificador de usuario
+        "sessionId": sender  # 🆕 Se asegura una sesión activa
     }
     
     try:
         botpress_response = requests.post(BOTPRESS_WEBHOOK_URL, json=botpress_payload)
         print(f"🔍 Respuesta cruda de BotPress: {botpress_response.text}")  # <-- IMPRIME RESPUESTA DE BOTPRESS
         
-        # Si la respuesta está vacía, evitamos un error de JSONDecodeError
         if botpress_response.status_code != 200 or not botpress_response.text.strip():
             bot_response = "Error al conectar con BotPress."
         else:
