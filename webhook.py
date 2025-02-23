@@ -1,26 +1,19 @@
-from flask import Flask, request
-from twilio.twiml.messaging_response import MessagingResponse
+from flask import Flask, request, jsonify
 import requests
 import os
+from twilio.twiml.messaging_response import MessagingResponse
 
 app = Flask(__name__)
 
-# Credenciales (usa variables de entorno en Render)
-TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
-TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-
-# URL de OpenRouter
 OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-# Función para obtener respuesta de la IA
 def obtener_respuesta_ia(mensaje):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
     }
-    
+
     data = {
         "model": "mistralai/mistral-7b-instruct:free",
         "messages": [
@@ -30,26 +23,32 @@ def obtener_respuesta_ia(mensaje):
     }
 
     response = requests.post(OPENROUTER_URL, headers=headers, json=data)
+    
+    # 👇 Agregamos prints para debuggear
+    print("STATUS CODE:", response.status_code)
+    print("RESPONSE TEXT:", response.text)
 
     if response.status_code == 200:
         return response.json()["choices"][0]["message"]["content"]
     else:
-        return "Lo siento, no pude procesar tu solicitud en este momento."
+        return f"Error en OpenRouter: {response.text}"
 
-# Webhook para recibir mensajes de WhatsApp
+
 @app.route("/webhook", methods=["POST"])
-def whatsapp_webhook():
-    incoming_msg = request.values.get("Body", "").strip()
-    resp = MessagingResponse()
-    msg = resp.message()
+def webhook():
+    mensaje_usuario = request.form.get("Body")
 
-    if incoming_msg:
-        respuesta = obtener_respuesta_ia(incoming_msg)
-        msg.body(respuesta)
-    else:
-        msg.body("No entendí tu mensaje, intenta de nuevo.")
+    if not mensaje_usuario:
+        return "No se recibió mensaje"
 
-    return str(resp)
+    respuesta_ia = obtener_respuesta_ia(mensaje_usuario)
+
+    # 🟢 Aquí aseguramos que la respuesta sea un TwiML válido para Twilio
+    twilio_resp = MessagingResponse()
+    twilio_resp.message(respuesta_ia)
+
+    return str(twilio_resp)
+
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=10000, debug=True)
+    app.run(host="0.0.0.0", port=5000)
