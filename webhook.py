@@ -54,7 +54,7 @@ def obtener_respuesta_openrouter(mensaje):
     }
     data = {
         "model": "mistralai/mistral-7b-instruct:free",
-        "messages": [{"role": "system", "content": "Eres un chatbot de reservas para restaurantes."},
+        "messages": [{"role": "system", "content": "Eres un chatbot que funciona colo si fueras una pokédex, por lo tanto, también eres un experto en Pokémon."},
                       {"role": "user", "content": mensaje}]
     }
     response = requests.post(url, headers=headers, json=data)
