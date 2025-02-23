@@ -32,7 +32,7 @@ def webhook():
             json={
                 "model": "mistralai/mistral-7b-instruct:free",
                 "messages": [
-                    {"role": "system", "content": "Eres un chatbot de WhatsApp."},
+                    {"role": "system", "content": "Eres un asistente amigable y útil en WhatsApp. Responde de manera clara y concisa."},
                     {"role": "user", "content": incoming_msg}
                 ]
             }
