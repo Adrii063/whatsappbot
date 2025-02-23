@@ -1,54 +1,58 @@
-from flask import Flask, request, jsonify
-import requests
 import os
-from twilio.twiml.messaging_response import MessagingResponse
+import json
+import requests
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
+# Obtener la API Key desde las variables de entorno
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 
-def obtener_respuesta_ia(mensaje):
-    headers = {
-        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-        "Content-Type": "application/json"
-    }
+# Verificar que la clave esté configurada
+if not OPENROUTER_API_KEY:
+    raise ValueError("ERROR: La variable de entorno OPENROUTER_API_KEY no está configurada.")
 
-    data = {
-        "model": "mistralai/mistral-7b-instruct:free",
-        "messages": [
-            {"role": "system", "content": "Eres un chatbot de WhatsApp."},
-            {"role": "user", "content": mensaje}
-        ]
-    }
-
-    response = requests.post(OPENROUTER_URL, headers=headers, json=data)
-    
-    # 👇 Agregamos prints para debuggear
-    print("STATUS CODE:", response.status_code)
-    print("RESPONSE TEXT:", response.text)
-
-    if response.status_code == 200:
-        return response.json()["choices"][0]["message"]["content"]
-    else:
-        return f"Error en OpenRouter: {response.text}"
-
-
+# Ruta del webhook para Twilio
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    mensaje_usuario = request.form.get("Body")
+    incoming_msg = request.form.get("Body")  # Mensaje recibido de WhatsApp
+    sender = request.form.get("From")  # Número del remitente
 
-    if not mensaje_usuario:
-        return "No se recibió mensaje"
+    if not incoming_msg:
+        return jsonify({"error": "No se recibió ningún mensaje."})
 
-    respuesta_ia = obtener_respuesta_ia(mensaje_usuario)
+    # Llamar a la API de OpenRouter
+    try:
+        response = requests.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": "mistralai/mistral-7b-instruct:free",
+                "messages": [
+                    {"role": "system", "content": "Eres un chatbot de WhatsApp."},
+                    {"role": "user", "content": incoming_msg}
+                ]
+            }
+        )
 
-    # 🟢 Aquí aseguramos que la respuesta sea un TwiML válido para Twilio
-    twilio_resp = MessagingResponse()
-    twilio_resp.message(respuesta_ia)
+        if response.status_code != 200:
+            return jsonify({"error": f"Error en OpenRouter: {response.status_code}", "details": response.text})
 
-    return str(twilio_resp)
+        data = response.json()
+        reply = data["choices"][0]["message"]["content"]
 
+    except Exception as e:
+        return jsonify({"error": "Error procesando la solicitud.", "details": str(e)})
 
+    # Respuesta a Twilio en formato XML
+    return f"""<?xml version="1.0" encoding="UTF-8"?>
+    <Response>
+        <Message>{reply}</Message>
+    </Response>"""
+
+# Ejecutar la aplicación
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5000)
