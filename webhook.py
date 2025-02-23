@@ -13,7 +13,7 @@ TWILIO_NUMBER = os.getenv("TWILIO_WHATSAPP_NUMBER", "whatsapp:+14155238886")
 # Configuración de OpenRouter
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")  # Clave de OpenRouter
 OPENROUTER_URL = "https://openrouter.ai/api/v1"
-MODEL = "mistralai/mistral-7b-instruct"  # Modelo seleccionado
+MODEL = "mistralai/mistral-7b-instruct:free"  # Modelo seleccionado
 
 client_twilio = Client(ACCOUNT_SID, AUTH_TOKEN)
 
