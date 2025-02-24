@@ -19,8 +19,7 @@ def init_db():
                         nombre TEXT,
                         telefono TEXT,
                         fecha TEXT,
-                        hora TEXT,
-                        personas INTEGER)''')
+                        hora TEXT)''')
     conn.commit()
     conn.close()
 
@@ -33,16 +32,16 @@ def procesar_reserva(mensaje, telefono):
         try:
             detalles = mensaje.replace("reservar", "").strip()
             partes = detalles.split()
-            fecha, hora, personas = partes[0], partes[1], partes[2]
+            fecha, hora = partes[0], partes[1]
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO reservas (nombre, telefono, fecha, hora, personas) VALUES (?, ?, ?, ?, ?)",
-                           ("Cliente", telefono, fecha, hora, personas))
+            cursor.execute("INSERT INTO reservas (nombre, telefono, fecha, hora) VALUES (?, ?, ?, ?)",
+                           ("Cliente", telefono, fecha, hora))
             conn.commit()
             conn.close()
-            return f"Reserva confirmada para {fecha} a las {hora} para {personas} personas."
+            return f"Reserva confirmada para el {fecha} a las {hora}. Recibirás un recordatorio antes de tu cita."
         except:
-            return "Formato incorrecto. Usa: 'Reservar [fecha] [hora] [personas]'"
+            return "Formato incorrecto. Usa: 'Reservar [fecha] [hora]'"
     return None
 
 # Función para interactuar con OpenRouter
@@ -54,7 +53,7 @@ def obtener_respuesta_openrouter(mensaje):
     }
     data = {
         "model": "mistralai/mistral-7b-instruct:free",
-        "messages": [{"role": "system", "content": "Eres un chatbot que funciona colo si fueras una pokédex, por lo tanto, también eres un experto en Pokémon."},
+        "messages": [{"role": "system", "content": "Eres un asistente virtual para una clínica podológica. Tu tarea es ayudar a los pacientes a reservar citas, proporcionar información sobre horarios y disponibilidad, y enviar recordatorios de citas. Sé educado, profesional y útil."},
                       {"role": "user", "content": mensaje}]
     }
     response = requests.post(url, headers=headers, json=data)
