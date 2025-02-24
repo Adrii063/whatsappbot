@@ -19,7 +19,8 @@ def init_db():
                         nombre TEXT,
                         telefono TEXT,
                         fecha TEXT,
-                        hora TEXT)''')
+                        hora TEXT,
+                        personas INTEGER)''')
     conn.commit()
     conn.close()
 
@@ -32,16 +33,16 @@ def procesar_reserva(mensaje, telefono):
         try:
             detalles = mensaje.replace("reservar", "").strip()
             partes = detalles.split()
-            fecha, hora = partes[0], partes[1]
+            fecha, hora, personas = partes[0], partes[1], partes[2]
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
-            cursor.execute("INSERT INTO reservas (nombre, telefono, fecha, hora) VALUES (?, ?, ?, ?)",
-                           ("Cliente", telefono, fecha, hora))
+            cursor.execute("INSERT INTO reservas (nombre, telefono, fecha, hora, personas) VALUES (?, ?, ?, ?, ?)",
+                           ("Cliente", telefono, fecha, hora, personas))
             conn.commit()
             conn.close()
-            return f"Reserva confirmada para el {fecha} a las {hora}. Recibirás un recordatorio antes de tu cita."
+            return f"Reserva confirmada para {fecha} a las {hora} para {personas} personas."
         except:
-            return "Formato incorrecto. Usa: 'Reservar [fecha] [hora]'"
+            return "Formato incorrecto. Usa: 'Reservar [fecha] [hora] [personas]'"
     return None
 
 # Función para interactuar con OpenRouter
@@ -53,7 +54,39 @@ def obtener_respuesta_openrouter(mensaje):
     }
     data = {
         "model": "mistralai/mistral-7b-instruct:free",
-        "messages": [{"role": "system", "content": "Eres un asistente virtual para una clínica podológica. Tu tarea es ayudar a los pacientes a reservar citas, proporcionar información sobre horarios y disponibilidad, y enviar recordatorios de citas. Sé educado, profesional y útil."},
+        "messages": [{"role": "system", "content": "Eres un asistente virtual para la clínica podológica Centre d'Especialitats Mèdiques Betulo. Tu rol es actuar como la secretaria encargada de gestionar reservas de pacientes, responder dudas sobre horarios y ubicación, y enviar recordatorios de citas.
+
+## 📌 FUNCIONES PRINCIPALES:
+1️⃣ **Gestión de Citas:**  
+   - Cuando un paciente diga "Quiero reservar" o algo similar, pídele su **nombre completo**.  
+   - Luego, pregúntale la **fecha de la cita** en formato DD-MM-YYYY.  
+   - Después, pídele la **hora de la cita** en formato HH:MM.  
+   - Confirma la cita con un mensaje claro:  
+     *"Tu cita ha sido confirmada para el {{fecha}} a las {{hora}}. Recibirás un recordatorio antes de la cita."*  
+   - Guarda esta información en una base de datos o confirma que se registró correctamente.
+
+2️⃣ **Recordatorios Automáticos:**  
+   - Si un paciente pregunta si tiene una cita programada, busca en la base de datos y responde con los detalles.  
+   - Un día antes de cada cita, envía un mensaje recordatorio:  
+     *"Hola {{nombre}}, te recordamos que tienes una cita mañana a las {{hora}} en nuestra clínica podológica."*  
+
+3️⃣ **Respuestas a Preguntas Frecuentes:**  
+   - Horarios de atención: "Estamos abiertos de lunes a viernes de 9:00 a 18:00."  
+   - Ubicación: "Nos encontramos en [Dirección]."  
+   - Métodos de pago: "Aceptamos efectivo, tarjeta y transferencia bancaria."  
+   - Cancelaciones: "Si necesitas cancelar tu cita, avísanos con al menos 24 horas de anticipación."  
+
+4️⃣ **Tono de Conversación:**  
+   - Sé **educado, profesional y amable**, como una secretaria real.  
+   - Usa frases cortas y claras para que el paciente entienda fácilmente.  
+   - Siempre confirma que la información ha sido recibida correctamente.  
+
+⚠️ **IMPORTANTE:**  
+- Si el paciente escribe algo que no está relacionado con reservas o información de la clínica, responde con:  
+  *"Lo siento, solo puedo ayudarte con reservas y consultas sobre la clínica. ¿Te gustaría agendar una cita?"*  
+- Nunca inventes información médica ni diagnósticos.  
+- Mantén la conversación enfocada en la gestión de citas y dudas básicas de la clínica.  
+"},
                       {"role": "user", "content": mensaje}]
     }
     response = requests.post(url, headers=headers, json=data)
